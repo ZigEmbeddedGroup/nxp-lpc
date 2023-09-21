@@ -27,6 +27,7 @@ pub const chips = struct {
             },
         },
         .hal = hal,
+        .binary_post_process = postprocess,
     };
 };
 
@@ -41,11 +42,25 @@ pub const boards = struct {
                 .url = "https://os.mbed.com/platforms/mbed-LPC1768/",
                 .source_file = path("/src/boards/mbed_LPC1768.zig"),
             },
+            .binary_post_process = postprocess,
         };
     };
 };
 
-pub fn build(b: *std.build.Builder) void {
+/// Post-processes an ELF file to add a checksum over the first 8 words so the
+/// cpu will properly boot.
+fn postprocess(b: *std.Build, input: std.Build.LazyPath) std.Build.LazyPath {
+    const patchelf = b.addExecutable(.{
+        .name = "lpc176x5x-patchelf",
+        .root_source_file = path("/src/tools/patchelf.zig"),
+    });
+
+    const patch = b.addRunArtifact(patchelf);
+    patch.addFileArg(input);
+    return patch.addOutputFileArg("firmware.elf");
+}
+
+pub fn build(b: *std.Build) void {
     _ = b;
     // const optimize = b.standardOptimizeOption(.{});
     // inline for (@typeInfo(boards).Struct.decls) |decl| {
